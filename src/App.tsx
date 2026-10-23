@@ -141,7 +141,7 @@ export default function App() {
 
         {/* Check-in Card */}
         <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200/50 dark:bg-slate-800/60 dark:ring-slate-700/50 transition-colors duration-300">
-          <h2 className="mb-4 text-sm font-medium text-slate-600 dark:text-slate-300">今天感觉怎么样？</h2>
+          <h2 className="mb-4 text-sm font-medium text-slate-600 dark:text-slate-300">HOWS TODAY？</h2>
 
           {/* Mood selector */}
           <div className="mb-5 grid grid-cols-3 gap-3">
