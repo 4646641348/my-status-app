@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Trash2, Send, Smile, Meh, Frown, Sun, Moon } from 'lucide-react';
+import { Trash2, Send, Smile, Meh, Frown, Sun, Moon, Loader2 } from 'lucide-react';
+
+// ⚠️ 注意：测试成功后，记得去 DeepSeek 后台作废这个 Key 并换新的！
+const API_KEY = 'sk-acc7263594164138b70e903984c6a895';
 
 type Mood = '很好' | '一般' | '差';
 
@@ -12,8 +15,6 @@ interface Record {
 
 const STORAGE_KEY = 'mood-checkin-records';
 const THEME_KEY = 'mood-checkin-theme';
-
-const ENCOURAGEMENTS = ['今天也辛苦啦！', '继续加油哦！', '记录得真好！', '抱抱你，今天也很棒！'];
 
 type ThemeMode = 'light' | 'dark';
 
@@ -72,6 +73,7 @@ export default function App() {
   const [records, setRecords] = useState<Record[]>([]);
   const [showConfirm, setShowConfirm] = useState(false);
   const [theme, setTheme] = useState<ThemeMode>('light');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setRecords(loadRecords());
@@ -98,17 +100,55 @@ export default function App() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (isSaving) return; 
+    
+    setIsSaving(true);
+    const currentNote = note.trim();
+    const currentMood = mood;
+
     const entry: Record = {
       id: crypto.randomUUID(),
-      mood,
-      note: note.trim(),
+      mood: currentMood,
+      note: currentNote,
       time: Date.now(),
     };
     persist([entry, ...records]);
     setNote('');
     setMood('很好');
-    alert(ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)]);
+
+    try {
+      const prompt = `我今天心情${currentMood}。${currentNote ? `我记录的事情是：${currentNote}` : ''} 请作为我的专属树洞，给我一句20字以内的简短暖心回复，不要有标点符号之外的废话。`;
+      
+      const response = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            { role: 'user', content: prompt }
+          ],
+          max_tokens: 100
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      const aiReply = data.choices[0].message.content;
+      
+      alert(`✨ AI 树洞回复：\n${aiReply}`);
+    } catch (error) {
+      console.error(error);
+      alert('AI 好像睡着了，但你的记录已经稳稳地保存好了！');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleClearAll = () => {
@@ -127,11 +167,10 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 transition-colors duration-300">
       <div className="mx-auto max-w-md px-4 py-8">
-        {/* Header */}
         <header className="mb-8 flex items-start justify-between">
           <div className="text-center flex-1">
             <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">我的状态打卡</h1>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">记录每一天的心情</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">记录每一天的心情</p >
           </div>
           <button
             onClick={toggleTheme}
@@ -142,11 +181,9 @@ export default function App() {
           </button>
         </header>
 
-        {/* Check-in Card */}
         <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200/50 dark:bg-slate-800/60 dark:ring-slate-700/50 transition-colors duration-300">
           <h2 className="mb-4 text-sm font-medium text-slate-600 dark:text-slate-300">今天感觉怎么样？</h2>
 
-          {/* Mood selector */}
           <div className="mb-5 grid grid-cols-3 gap-3">
             {(Object.keys(MOOD_CONFIG) as Mood[]).map((m) => {
               const cfg = MOOD_CONFIG[m];
@@ -173,7 +210,6 @@ export default function App() {
             })}
           </div>
 
-          {/* Note input */}
           <div className="mb-5">
             <textarea
               value={note}
@@ -184,17 +220,25 @@ export default function App() {
             />
           </div>
 
-          {/* Save button */}
           <button
             onClick={handleSave}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-800 py-3 text-sm font-medium text-white transition-all duration-200 hover:bg-slate-700 active:scale-[0.98] dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+            disabled={isSaving}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-800 py-3 text-sm font-medium text-white transition-all duration-200 hover:bg-slate-700 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
           >
-            <Send className="h-4 w-4" />
-            保存
+            {isSaving ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                AI 正在思考...
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4" />
+                保存
+              </>
+            )}
           </button>
         </section>
 
-        {/* Stats bar */}
         {records.length > 0 && (
           <div className="mt-6 flex items-center justify-between rounded-xl bg-white px-5 py-3 shadow-sm ring-1 ring-slate-200/50 dark:bg-slate-800/60 dark:ring-slate-700/50 transition-colors duration-300">
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400">共 {records.length} 条记录</span>
@@ -212,7 +256,6 @@ export default function App() {
           </div>
         )}
 
-        {/* Records list */}
         <section className="mt-6">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-medium text-slate-600 dark:text-slate-300">打卡记录</h2>
@@ -229,7 +272,7 @@ export default function App() {
 
           {records.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-200 py-12 text-center dark:border-slate-700">
-              <p className="text-sm text-slate-400 dark:text-slate-500">还没有记录，快来打个卡吧～</p>
+              <p className="text-sm text-slate-400 dark:text-slate-500">还没有记录，快来打个卡吧～</p >
             </div>
           ) : (
             <ul className="space-y-4">
@@ -253,7 +296,7 @@ export default function App() {
                     {r.note && (
                       <p className="mt-3 break-words border-t border-slate-200/50 pt-3 text-sm leading-relaxed text-slate-600 dark:border-slate-700/50 dark:text-slate-300">
                         {r.note}
-                      </p>
+                      </p >
                     )}
                   </li>
                 );
@@ -263,7 +306,6 @@ export default function App() {
         </section>
       </div>
 
-      {/* Clear confirmation modal */}
       {showConfirm && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-8"
@@ -274,7 +316,7 @@ export default function App() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100">确认清空？</h3>
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">这将删除所有打卡记录，无法恢复。</p>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">这将删除所有打卡记录，无法恢复。</p >
             <div className="mt-5 flex gap-3">
               <button
                 onClick={() => setShowConfirm(false)}
@@ -295,4 +337,3 @@ export default function App() {
     </div>
   );
 }
-
