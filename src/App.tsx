@@ -13,6 +13,8 @@ interface Record {
 const STORAGE_KEY = 'mood-checkin-records';
 const THEME_KEY = 'mood-checkin-theme';
 
+const ENCOURAGEMENTS = ['今天也辛苦啦！', '继续加油哦！', '记录得真好！', '抱抱你，今天也很棒！'];
+
 type ThemeMode = 'light' | 'dark';
 
 const MOOD_CONFIG: Record<Mood, { color: string; bg: string; border: string; icon: typeof Smile }> = {
@@ -106,6 +108,7 @@ export default function App() {
     persist([entry, ...records]);
     setNote('');
     setMood('很好');
+    alert(ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)]);
   };
 
   const handleClearAll = () => {
@@ -141,7 +144,7 @@ export default function App() {
 
         {/* Check-in Card */}
         <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200/50 dark:bg-slate-800/60 dark:ring-slate-700/50 transition-colors duration-300">
-          <h2 className="mb-4 text-sm font-medium text-slate-600 dark:text-slate-300">HOWS TODAY？</h2>
+          <h2 className="mb-4 text-sm font-medium text-slate-600 dark:text-slate-300">今天感觉怎么样？</h2>
 
           {/* Mood selector */}
           <div className="mb-5 grid grid-cols-3 gap-3">
@@ -292,3 +295,4 @@ export default function App() {
     </div>
   );
 }
+
